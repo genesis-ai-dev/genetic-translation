@@ -6,7 +6,7 @@ from Finch.generic import Environment, Individual
 from Finch.layers.universal_layers import *
 from Finch.selectors import RandomSelection, RankBasedSelection, TournamentSelection
 from genetics import LaGenePool, LaGene
-from layers import LexiconMutation, SimpleLaGeneCrossover, MarkovMutation
+from layers import LexiconMutation, SimpleLaGeneCrossover, MarkovMutation, MassExtinction
 from distance import similarity
 import matplotlib.pyplot as plt
 from difflib import SequenceMatcher
@@ -59,8 +59,8 @@ class CommunalFitness:
 
 
 # Config
-start_pop = 90
-max_pop = 100
+start_pop = 55
+max_pop = 500
 mutation_selection = RankBasedSelection(factor=-40, amount_to_select=8)
 crossover_selection = RankBasedSelection(factor=40, amount_to_select=2)
 total_children = 8
@@ -86,7 +86,7 @@ mutation = LexiconMutation(selection=mutation_selection.select, gene_pool=pool, 
 markov_mutation = MarkovMutation(selection=mutation_selection.select, gene_pool=pool, overpowered=op_mutation)
 sorting_layer = SortByFitness()
 cap_layer = CapPopulation(max_population=max_pop)
-
+extinction = MassExtinction(period=10)
 # Add layers to environment
 
 env.add_layer(crossover)
@@ -94,13 +94,19 @@ env.add_layer(cap_layer)
 
 env.add_layer(markov_mutation)
 env.add_layer(mutation)
-
+env.add_layer(extinction)
 env.add_layer(sorting_layer)
 env.add_layer(cap_layer)
 env.compile()
 env.evolve(generations=generations)
 env.plot()
 fitness.plot()
+
+plt.plot(env.history['population'])
+plt.ylabel('Population')
+plt.xlabel('Generation')
+plt.show()
+
 print(fitness.final())
 
 for ind in env.individuals:

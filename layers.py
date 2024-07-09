@@ -30,10 +30,10 @@ class SimpleLaGeneCrossover(Layer):
 
         shift = random.choice([shift1, shift2])
 
-        child_lagene = LaGene(source=source, target=target, shift=shift, positional_rank=(rank1 + rank2)/2)
+        child_lagene = LaGene(source=source, target=target, shift=shift, positional_rank=(rank1 + rank2) / 2)
         child_lagene = Individual(child_lagene, parent1.fitness_function)
         child_lagene.fit()
-        if child_lagene.fitness < max(parent1.fitness, parent2.fitness): #
+        if child_lagene.fitness < max(parent1.fitness, parent2.fitness):  #
             return
         self.environment.add_individuals([child_lagene])
 
@@ -84,13 +84,14 @@ class LexiconMutation(Layer):
             pass
 
     def mutate_rank(self, individual: Individual):
-        individual.item.positional_rank += random.choice([-.02, .02]) # TODO: does this need to be smoother?
+        individual.item.positional_rank += random.choice([-.02, .02])  # TODO: does this need to be smoother?
 
     def mutate_shift(self, individual: Individual):
         shift_shift = random.choice([-1, 1])
         individual.item.shift = shift_shift
+
     def mutate(self, individual: Individual):
-        mutation_type = random.choice(["rank","text"])
+        mutation_type = random.choice(["rank", "text"])
 
         if self.overpowered:
             old_individual = individual.copy()
@@ -120,6 +121,7 @@ class MarkovMutation(Layer):
     def mutate_all(self, individuals: List[Individual]):
         for individual in individuals:
             self.mutate(individual)
+
     def mutate(self, individual: Individual):
 
         if self.overpowered:
@@ -141,7 +143,6 @@ class MarkovMutation(Layer):
                 index = random.randint(0, len(individual.item.source) - 1)
                 individual.item.source.pop(index)
 
-
         if t == 'add':
             last_item = individual.item.target[-1]
             new_item = self.gene_pool.markov.rand_next(last_item)
@@ -157,3 +158,15 @@ class MarkovMutation(Layer):
                 individual.fitness = old_individual.fitness
                 individual.item = old_individual.item
 
+
+class MassExtinction(Layer):
+    def __init__(self, period: int):
+        super().__init__(application_function=self.mass_extinction, selection_function=lambda x: x)
+        self.n = 0
+        self.period = period
+
+    def mass_extinction(self, individuals: List[Individual]):
+        self.n += 1
+        if self.n >= self.period:
+            self.n = 0
+            self.environment.individuals = [ind for ind in individuals if ind.fitness > 0]
