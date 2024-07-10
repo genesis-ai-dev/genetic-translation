@@ -1,5 +1,6 @@
 from Finch.generic import Environment, Individual
 from genetics import LaGenePool, LaGene
+from layers import AfterLife
 import matplotlib.pyplot as plt
 from difflib import SequenceMatcher
 from typing import List
@@ -30,7 +31,8 @@ def close_lagenes(items, reference_item, n, include_reference=False):
 
     return closest_items
 class CommunalFitness:
-    def __init__(self, environment: Environment, gene_pool: LaGenePool, n_texts: int, n_lagenes: int):
+    def __init__(self, environment: Environment, gene_pool: LaGenePool, n_texts: int, n_lagenes: int,
+                 afterlife: AfterLife):
         self.environment = environment
         self.gene_pool = gene_pool
         self.fitness_history = []
@@ -38,6 +40,7 @@ class CommunalFitness:
         self.fitness_memory = {}
         self.n_texts = n_texts
         self.n_lagenes = n_lagenes
+        self.afterlife = afterlife
 
     def fitness(self, individual: Individual) -> float:
         global global_history, fitness_history
@@ -67,6 +70,7 @@ class CommunalFitness:
         length = len(self.environment.history['population'])
 
         if length != self.reset:
+            all_lagenes += self.afterlife.individuals
             translation_with = self.apply_lagenes(all_lagenes, self.gene_pool.source_text)
 
             total = sim(translation_with, self.gene_pool.target_text)
@@ -83,17 +87,17 @@ class CommunalFitness:
         return improvement
 
     def final(self):
-        other_lagenes = [ind for ind in self.environment.individuals]
+        other_lagenes = [ind for ind in self.environment.individuals + self.afterlife.individuals]
         translation_without = self.apply_lagenes(other_lagenes, self.gene_pool.source_text)
         return " ".join(translation_without)
 
     def apply_lagenes(self, lagenes: List[LaGene], text: np.ndarray) -> str:
-        for individual in sorted(lagenes, key=lambda x: len(x.item.source)):
+        for individual in sorted(lagenes, key=lambda x: len(x.item.source) + x.item.order_boost):
             text = individual.item.apply(text)
         return text
 
     def plot(self):
         plt.plot(self.fitness_history)
-        plt.ylabel('Fitness')
+        plt.ylabel('Communal Fitness')
         plt.xlabel("Generation")
         plt.show()

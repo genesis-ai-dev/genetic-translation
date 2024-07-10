@@ -16,6 +16,7 @@ class LaGene:
         self.shift = shift
         self.positional_rank = positional_rank
         self.name = str(uuid.uuid4())
+        self.order_boost = 0  # TODO: implement mutations and crossover for this.
 
     def apply(self, sequence_text: np.ndarray):
         new_sequence = l_replace(sequence_text, self.source, self.target)
@@ -71,7 +72,7 @@ class LaGenePool(GenePool):
         source, target = self.AutoLexicon.get_random_pair(self.temperature())
         if random.random() > .5:
             source, target = target, source
-        lagene = LaGene(source=[source], target=[target], shift=random.choice([-1, 0, 1]),
+        lagene = LaGene(source=[source], target=[target], shift=0,
                         positional_rank=random.random())
         individual = Individual(item=lagene, fitness_function=self.fitness_function)
         return individual
