@@ -22,19 +22,19 @@ class SimpleLaGeneCrossover(Layer):
         source1, source2 = parent1.item.source, parent2.item.source
         target1, target2 = parent1.item.target, parent2.item.target
 
-        shift1, shift2 = parent1.item.shift, parent2.item.shift
         rank1, rank2 = parent1.item.positional_rank, parent2.item.positional_rank
 
         source = copy.deepcopy(random.choice([source1, source2]))
         target = copy.deepcopy(random.choice([target1, target2]))
 
-        shift = random.choice([shift1, shift2])
-
-        child_lagene = LaGene(source=source, target=target, shift=shift, positional_rank=(rank1 + rank2) / 2)
+        child_lagene = LaGene(source=source, target=target, shift=0, positional_rank=max([rank1, rank2]) + .05)
+        # self.environment.individuals = [ind for ind in self.environment.individuals if ind != parent1 and ind != parent1]
         child_lagene = Individual(child_lagene, parent1.fitness_function)
         child_lagene.fit()
-        if child_lagene.fitness < max(parent1.fitness, parent2.fitness):  #
+        if child_lagene.fitness < max(parent1.fitness, parent2.fitness) or child_lagene.fitness <= 0:  #
             return
+        parent2.fit()
+        parent1.fit()
         self.environment.add_individuals([child_lagene])
 
         return child_lagene
@@ -170,3 +170,42 @@ class MassExtinction(Layer):
         if self.n >= self.period:
             self.n = 0
             self.environment.individuals = [ind for ind in individuals if ind.fitness > 0]
+
+
+class MigrationLayer(Layer):
+    def __init__(self, selection: Union[Callable, int], gene_pool: LaGenePool, hard_reset: bool = False,
+                 scope_size: int = 4):
+        super().__init__(application_function=self.migrate, selection_function=selection)
+        self.hard_reset = hard_reset
+        self.gene_pool = gene_pool
+        self.scope_size = scope_size
+
+    def weighted_position(self, indices, scores, max_index):
+        if len(indices) != len(scores):
+            raise ValueError("Indices and scores must be of the same length")
+
+        if max_index == 0:
+            raise ValueError("Maximum index value must not be zero")
+
+        # Normalize indices to 0-1 range
+        normalized_indices = numpy.array(indices) / max_index
+        scores = numpy.array(scores)
+
+        # Compute weighted average of normalized indices using scores as weights
+        total_weight = numpy.sum(scores)
+        if total_weight == 0:
+            return 0
+        weighted_sum = numpy.sum(normalized_indices * scores)
+        return weighted_sum / total_weight
+    def migrate(self, individuals: List[Individual]):
+        total_length = len(self.gene_pool.source_lines)
+        for individual in individuals:
+            query = ' '.join(individual.item.source)
+            ids, scores = self.gene_pool.find_inds(query, self.scope_size)
+
+            suggested_position = self.weighted_position(ids, scores, total_length)
+            if self.hard_reset:
+                individual.item.positional_rank = suggested_position
+            else:
+                individual.item.positional_rank = (individual.item.positional_rank + suggested_position) / 2
+

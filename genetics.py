@@ -1,12 +1,13 @@
 from Finch.layers.universal_layers import *
-from Finch.selectors import RandomSelection, RankBasedSelection
-from Finch.generic import GenePool, Layer, Individual
+from Finch.generic import GenePool, Individual
 from Finch.rates import make_callable
-from distance import l_replace, l_shift, similarity
+from distance import l_replace
 from markov import AutoLexicon, BiMarkovChain
 import numpy as np
 import random
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import uuid
 
 class LaGene:
     def __init__(self, source: np.ndarray, target: np.ndarray, shift: int, positional_rank: float):
@@ -14,9 +15,9 @@ class LaGene:
         self.target = target
         self.shift = shift
         self.positional_rank = positional_rank
+        self.name = str(uuid.uuid4())
 
     def apply(self, sequence_text: np.ndarray):
-
         new_sequence = l_replace(sequence_text, self.source, self.target)
         # if self.shift != 0:
         #     new_sequence = l_shift(new_sequence, self.target, self.shift)
@@ -57,6 +58,11 @@ class LaGenePool(GenePool):
 
         self.source_text = self.tokenize(self.source_text)
         self.target_text = self.tokenize(self.target_text)
+
+        # Create TF-IDF matrix for source sentences
+        self.tfidf_vectorizer = TfidfVectorizer()
+        self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.source_lines)
+
     def tokenize(self, text):
         self.temperature = self.temperature
         return text.split(" ")
@@ -65,7 +71,24 @@ class LaGenePool(GenePool):
         source, target = self.AutoLexicon.get_random_pair(self.temperature())
         if random.random() > .5:
             source, target = target, source
-        lagene = LaGene(source=[source], target=[target], shift=random.choice([-1, 0, 1]), positional_rank=random.random())
+        lagene = LaGene(source=[source], target=[target], shift=random.choice([-1, 0, 1]),
+                        positional_rank=random.random())
         individual = Individual(item=lagene, fitness_function=self.fitness_function)
-
         return individual
+
+    def find_samples(self, query, n):
+        top_n_indices, _ = self.find_inds(query, n)
+
+        source_samples = [self.source_lines[i] for i in top_n_indices]
+        target_samples = [self.target_lines[i] for i in top_n_indices]
+
+        source_str = " ".join(source_samples)
+        target_str = " ".join(target_samples)
+
+        return source_str, target_str
+
+    def find_inds(self, query, n):
+        query_vector = self.tfidf_vectorizer.transform([query])
+        cosine_similarities = cosine_similarity(query_vector, self.tfidf_matrix).flatten()
+        top_n_indices = np.argsort(cosine_similarities)[-n:][::-1]
+        return top_n_indices, cosine_similarities[top_n_indices]
