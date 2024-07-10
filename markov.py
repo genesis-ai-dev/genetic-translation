@@ -61,7 +61,7 @@ class BiMarkovChain:
         try:
             idx = self.item_to_idx[item]
         except KeyError:
-            idx = random.randint(0, len(self.item_to_idx) - 1)
+            return ''
         if sum(self.fwd_matrix[idx]) < 1:
             return ''
         next_idx = random.choices(range(len(self.items)), weights=self.fwd_matrix[idx])[0]
@@ -70,8 +70,11 @@ class BiMarkovChain:
     def rand_prev(self, item):
         if not hasattr(self, 'bwd_matrix'):
             self._build_matrices()
-        idx = self.item_to_idx[item]
-        prev_idx = np.random.choice(len(self.items), p=self.bwd_matrix[idx])
+        try:
+            idx = self.item_to_idx[item]
+            prev_idx = np.random.choice(len(self.items), p=self.bwd_matrix[idx])
+        except:
+            return ''
         return self.idx_to_item[prev_idx]
 
 

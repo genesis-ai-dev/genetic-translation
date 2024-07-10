@@ -14,19 +14,19 @@ markov_mutation_selection = RankBasedSelection(factor=5, amount_to_select=6)
 lexicon_mutation_selection = RankBasedSelection(factor=-5, amount_to_select=6)
 
 crossover_selection = RankBasedSelection(factor=3, amount_to_select=2)
-positional_crossover_selection = PositionalSelection(2, temperature=.1)
+positional_crossover_selection = PositionalSelection(2, temperature=.2)
 
-total_children = 30
+total_children = 15
 migration_selection = RandomSelection(percent_to_select=1)
 op_mutation = True
-generations = 250
+generations = 40
 
 # Setup
 pool = LaGenePool(source_file='source.txt', target_file='target.txt', temperature=15,
                   fitness_function=lambda x: 100)  # placeholder fitness that will be replaced
 env = Environment(layers=[Populate(population=start_pop, gene_pool=pool)], individuals=[])
-afterlife = AfterLife(start_at=10, n_best=1, period=20)
-fitness = CommunalFitness(environment=env, gene_pool=pool, n_texts=3, n_lagenes=20, afterlife=afterlife)
+afterlife = AfterLife(start_at=10, n_best=1, period=5)
+fitness = CommunalFitness(environment=env, gene_pool=pool, n_texts=1, n_lagenes=10, afterlife=afterlife)
 pool.fitness_function = fitness.fitness  # reassign the fitness function
 
 # Create remaining layers
@@ -60,5 +60,9 @@ fitness.plot()
 
 print(fitness.final())
 
-for ind in env.individuals + afterlife.individuals:
-    print(f"{ind.item.source} -> {ind.item.target}: {ind.item.shift}")
+for ind in env.individuals:
+    print(f"{ind.item.source} -> {ind.item.target}: {ind.fitness}")
+
+print("After life: ")
+for ind in afterlife.individuals:
+    print(f"{ind.item.source} -> {ind.item.target}: {ind.fitness}")

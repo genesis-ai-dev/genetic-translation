@@ -9,11 +9,17 @@ import numpy as np
 def sim(a, b):
     return SequenceMatcher(None, a, b).ratio() * 100
 
+def sim(a, b):
+    m = min(len(a), len(b))
+    score = 0
+    for i in range(m):
+        score += 1 if a[i] == b[i] else 0
+    return score
 def close_lagenes(items, reference_item, n, include_reference=False):
 
     # Calculate the distance of each item from the reference item
     distances = [(item, abs(item.item.positional_rank - reference_item.item.positional_rank)) for item in items if
-                 item.fitness > 0 or item.item.name == reference_item.item.name]
+                 item.fitness > 0.0 or item.item.name == reference_item.item.name]
     # Sort the items based on the calculated distance
     sorted_items = sorted(distances, key=lambda x: x[1])
 
@@ -53,20 +59,21 @@ class CommunalFitness:
             if name != individual.item.name:
                 return 0
         query = ' '.join(individual.item.source)
+        div = min(len(individual.item.source), len(individual.item.target))
 
         source_sample, target_sample = self.gene_pool.find_samples(query, n=self.n_texts)
         source_sample, target_sample = source_sample.split(), target_sample.split()
         other_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=self.n_lagenes)
         # Translation without the current LaGene
         translation_without = self.apply_lagenes(other_lagenes, source_sample)
-        similarity_without = sim(translation_without, target_sample)
+        similarity_without = sim(translation_without, target_sample) * div
         # Translation with the current LaGene
         all_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=self.n_lagenes,
                                     include_reference=True)
 
         translation_with = self.apply_lagenes(all_lagenes, source_sample)
 
-        similarity_with = sim(translation_with, target_sample)
+        similarity_with = sim(translation_with, target_sample) * div
         length = len(self.environment.history['population'])
 
         if length != self.reset:

@@ -174,9 +174,14 @@ class MarkovMutation(Layer):
         Helper method to mutate a sequence (either source or target).
         """
         if mutation_type == 'add' and (self.mutation_obedience == 1 or random.random() < self.mutation_obedience):
-            last_item = sequence[-1]
-            new_item = self.gene_pool.markov.rand_next(last_item)
-            sequence.append(new_item)
+            if random.random() < .5:
+                last_item = sequence[-1]
+                new_item = self.gene_pool.markov.rand_next(last_item)
+                sequence.append(new_item)
+            else:
+                first_item = sequence[0]
+                new_item = self.gene_pool.markov.rand_prev(first_item)
+                sequence.insert(0, new_item)
         elif mutation_type == 'delete' and random.random() > .5:
             index = random.randint(0, len(sequence) - 1)
             sequence.pop(index)
@@ -249,7 +254,7 @@ class MigrationLayer(Layer):
 
 
 class AfterLife(Layer):
-    def __init__(self, start_at: int, n_best: int, period: int):
+    def __init__(self, start_at: int, n_best: int, period: int, threshold: float = 9):
         """A positive way to die"""
         super().__init__(application_function=self.save, selection_function=lambda x: x)
         self.n_best = n_best
@@ -257,7 +262,7 @@ class AfterLife(Layer):
         self.individuals = []
         self.year = 0
         self.period = period
-
+        self.threshold = threshold
     def save(self, individuals: List[Individual]):
         self.year += 1
         if self.year > self.start_at and self.year % self.period == 0:
@@ -265,7 +270,8 @@ class AfterLife(Layer):
             self.environment.individuals = list(sorted(individuals, key=lambda individual: -individual.fitness))
             if len(self.environment.individuals) > self.n_best:
                 for i in range(self.n_best):
-                    self.individuals.append(self.environment.individuals.pop())
+                    if self.environment.individuals[0].fitness > self.threshold:
+                        self.individuals.append(self.environment.individuals.pop(0))
 
     def bring_back(self):
         self.environment.add_individuals(self.individuals)
