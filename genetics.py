@@ -1,7 +1,7 @@
 from Finch.layers.universal_layers import *
 from Finch.generic import GenePool, Individual
 from Finch.rates import make_callable
-from distance import l_replace
+from distance import l_replace, l_shift
 from markov import AutoLexicon, BiMarkovChain
 import numpy as np
 import random
@@ -19,8 +19,8 @@ class LaGene:
 
     def apply(self, sequence_text: np.ndarray):
         new_sequence = l_replace(sequence_text, self.source, self.target)
-        # if self.shift != 0: TODO: figure out how to do this quickly
-        #     new_sequence = l_shift(new_sequence, self.target, self.shift)
+        if self.shift != 0:  # TODO: figure out how to do this quickly
+            new_sequence = l_shift(new_sequence, self.target, self.shift)
 
         return new_sequence
 

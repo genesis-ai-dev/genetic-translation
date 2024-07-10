@@ -97,7 +97,7 @@ class LexiconMutation(Layer):
         individual.item.shift = shift_shift
 
     def mutate(self, individual: Individual):
-        mutation_type = random.choice(["text"])
+        mutation_type = random.choice(["text", "shift"])
 
         if self.overpowered:
             old_individual = individual.copy()
@@ -119,10 +119,12 @@ class LexiconMutation(Layer):
 
 
 class MarkovMutation(Layer):
-    def __init__(self, selection: Union[Callable, int], gene_pool: LaGenePool, overpowered: bool = False):
+    def __init__(self, selection: Union[Callable, int], gene_pool: LaGenePool, overpowered: bool = False,
+                 mutation_obedience: float = 1):
         super().__init__(application_function=self.mutate_all, selection_function=selection, refit=False)
         self.gene_pool = gene_pool
         self.overpowered = overpowered
+        self.mutation_obedience = mutation_obedience
 
     def mutate_all(self, individuals: List[Individual]):
         for individual in individuals:
@@ -141,18 +143,20 @@ class MarkovMutation(Layer):
             t = 'add'
 
         if t == 'add':
-            last_item = individual.item.source[-1]
-            new_item = self.gene_pool.markov.rand_next(last_item)
-            individual.item.source += [new_item]
+            if self.mutation_obedience == 1 or random.random() < self.mutation_obedience:
+                last_item = individual.item.source[-1]
+                new_item = self.gene_pool.markov.rand_next(last_item)
+                individual.item.source += [new_item]
         else:
             if random.random() > .5:
                 index = random.randint(0, len(individual.item.source) - 1)
                 individual.item.source.pop(index)
 
         if t == 'add':
-            last_item = individual.item.target[-1]
-            new_item = self.gene_pool.markov.rand_next(last_item)
-            individual.item.target += [new_item]
+            if self.mutation_obedience == 1 or random.random() > self.mutation_obedience:
+                last_item = individual.item.target[-1]
+                new_item = self.gene_pool.markov.rand_next(last_item)
+                individual.item.target += [new_item]
         else:
             if random.random() > .5:
                 index = random.randint(0, len(individual.item.target) - 1)

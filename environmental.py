@@ -25,10 +25,10 @@ op_mutation = True
 generations = 50
 
 # Setup
-pool = LaGenePool(source_file='source.txt', target_file='target.txt', temperature=6,
+pool = LaGenePool(source_file='source.txt', target_file='target.txt', temperature=15,
                   fitness_function=lambda x: 100)  # placeholder fitness that will be replaced
 env = Environment(layers=[Populate(population=start_pop, gene_pool=pool)], individuals=[])
-fitness = CommunalFitness(environment=env, gene_pool=pool, n_texts=10, n_lagenes=10)
+fitness = CommunalFitness(environment=env, gene_pool=pool, n_texts=3, n_lagenes=20)
 pool.fitness_function = fitness.fitness  # reassign the fitness function
 
 
@@ -46,9 +46,7 @@ migration = MigrationLayer(selection=migration_selection.select, gene_pool=pool,
 
 env.add_layer(crossover)
 env.add_layer(migration)
-env.add_layer(cap_layer)
-
-env.add_layer(markov_mutation)
+env.add_layer(markov_mutation) # Super needed
 env.add_layer(mutation)
 env.add_layer(extinction)
 env.add_layer(sorting_layer)

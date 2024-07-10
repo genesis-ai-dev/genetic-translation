@@ -88,7 +88,7 @@ class CommunalFitness:
         return " ".join(translation_without)
 
     def apply_lagenes(self, lagenes: List[LaGene], text: np.ndarray) -> str:
-        for individual in sorted(lagenes, key=lambda x: x.item.positional_rank):
+        for individual in sorted(lagenes, key=lambda x: len(x.item.source)):
             text = individual.item.apply(text)
         return text
 
