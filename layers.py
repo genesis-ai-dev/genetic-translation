@@ -35,6 +35,12 @@ class SimpleLaGeneCrossover(Layer):
             return
         parent2.fit()
         parent1.fit()
+
+        # Dang this is getting real we even have parents passing down names!
+        if child_lagene.item.source == parent1.item.source:
+            child_lagene.item.name = parent1.item.name
+        else:
+            child_lagene.item.name = parent2.item.name
         self.environment.add_individuals([child_lagene])
 
         return child_lagene
@@ -91,7 +97,7 @@ class LexiconMutation(Layer):
         individual.item.shift = shift_shift
 
     def mutate(self, individual: Individual):
-        mutation_type = random.choice(["rank", "text"])
+        mutation_type = random.choice(["text"])
 
         if self.overpowered:
             old_individual = individual.copy()

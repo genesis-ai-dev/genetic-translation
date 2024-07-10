@@ -11,13 +11,14 @@ def sim(a, b):
 def close_lagenes(items, reference_item, n, include_reference=False):
 
     # Calculate the distance of each item from the reference item
-    distances = [(item, abs(item.item.positional_rank - reference_item.item.positional_rank)) for item in items]
+    distances = [(item, abs(item.item.positional_rank - reference_item.item.positional_rank)) for item in items if
+                 item.fitness > 0 or item.item.name == reference_item.item.name]
     # Sort the items based on the calculated distance
     sorted_items = sorted(distances, key=lambda x: x[1])
 
     # Filter out the reference item if it's included in the distances and we're not including it in the final list
     if not include_reference:
-        sorted_items = [item for item in sorted_items if item[1] != 0]
+        sorted_items = [item for item in sorted_items if item[0].item.name != reference_item.item.name]
         n -= 1
     # Select the top n closest items
     closest_items = [item[0] for item in sorted_items[:n]]
@@ -29,12 +30,14 @@ def close_lagenes(items, reference_item, n, include_reference=False):
 
     return closest_items
 class CommunalFitness:
-    def __init__(self, environment: Environment, gene_pool: LaGenePool):
+    def __init__(self, environment: Environment, gene_pool: LaGenePool, n_texts: int, n_lagenes: int):
         self.environment = environment
         self.gene_pool = gene_pool
         self.fitness_history = []
         self.reset = 0
         self.fitness_memory = {}
+        self.n_texts = n_texts
+        self.n_lagenes = n_lagenes
 
     def fitness(self, individual: Individual) -> float:
         global global_history, fitness_history
@@ -44,19 +47,18 @@ class CommunalFitness:
 
         if memory:
             fitness, name = memory
-            if name == individual.item.name:
-                return fitness
-            return 0
+            if name != individual.item.name:
+                return 0
         query = ' '.join(individual.item.source)
 
-        source_sample, target_sample = self.gene_pool.find_samples(query, 7)
+        source_sample, target_sample = self.gene_pool.find_samples(query, n=self.n_texts)
         source_sample, target_sample = source_sample.split(), target_sample.split()
-        other_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=10)
+        other_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=self.n_lagenes)
         # Translation without the current LaGene
         translation_without = self.apply_lagenes(other_lagenes, source_sample)
         similarity_without = sim(translation_without, target_sample)
         # Translation with the current LaGene
-        all_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=10,
+        all_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=self.n_lagenes,
                                     include_reference=True)
 
         translation_with = self.apply_lagenes(all_lagenes, source_sample)

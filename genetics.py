@@ -19,7 +19,7 @@ class LaGene:
 
     def apply(self, sequence_text: np.ndarray):
         new_sequence = l_replace(sequence_text, self.source, self.target)
-        # if self.shift != 0:
+        # if self.shift != 0: TODO: figure out how to do this quickly
         #     new_sequence = l_shift(new_sequence, self.target, self.shift)
 
         return new_sequence
