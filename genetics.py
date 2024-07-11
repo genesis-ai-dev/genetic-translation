@@ -16,12 +16,12 @@ class LaGene:
         self.shift = shift
         self.positional_rank = positional_rank
         self.name = str(uuid.uuid4())
-        self.order_boost = 0  # TODO: implement mutations and crossover for this.
+        self.order_boost = 0  # TODO: implement mutations and crossover for this. (maybe)
 
     def apply(self, sequence_text: np.ndarray):
         new_sequence = l_replace(sequence_text, self.source, self.target)
-        if self.shift != 0:  # TODO: figure out how to do this quickly
-            new_sequence = l_shift(new_sequence, self.target, self.shift)
+        # if self.shift != 0:  # TODO: figure out how to do this quickly
+        #     new_sequence = l_shift(new_sequence, self.target, self.shift)
 
         return new_sequence
 

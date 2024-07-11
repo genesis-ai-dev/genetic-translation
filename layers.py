@@ -165,7 +165,7 @@ class MarkovMutation(Layer):
 
         if self.overpowered:
             new_fitness = individual.fit()
-            if new_fitness < old_fitness:
+            if new_fitness <= old_fitness:
                 individual.fitness = old_individual.fitness
                 individual.item = old_individual.item
 
@@ -254,7 +254,7 @@ class MigrationLayer(Layer):
 
 
 class AfterLife(Layer):
-    def __init__(self, start_at: int, n_best: int, period: int, threshold: float = 9):
+    def __init__(self, start_at: int, n_best: int, period: int, threshold: float = 12):
         """A positive way to die"""
         super().__init__(application_function=self.save, selection_function=lambda x: x)
         self.n_best = n_best
