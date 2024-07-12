@@ -1,132 +1,125 @@
+from typing import List
+import numpy as np
+from difflib import SequenceMatcher
 from Finch.generic import Environment, Individual
 from genetics import LaGenePool, LaGene
 from layers import AfterLife
-import matplotlib.pyplot as plt
-from difflib import SequenceMatcher
-from typing import List
-import numpy as np
 
-def sim(a, b):
 
-    difference = 0  # (len(a) - len(b)) * 2 TODO: find out if this is helpful
-    return (SequenceMatcher(None, a, b).ratio() * 100) - difference
+def similarity(a: List[str], b: List[str], source) -> float:
 
-# def sim(a, b):
-#     m = min(len(a), len(b))
-#     score = 0
-#     for i in range(m):
-#         score += 1 if a[i] == b[i] else 0
-#     return score
-def close_lagenes(items, reference_item, n, include_reference=False):
-    # Calculate the distance of each item from the reference item
-    distances = [(item, abs(item.item.positional_rank - reference_item.item.positional_rank)) for item in items if
-                 item.fitness > 0.0 or item.item.name == reference_item.item.name]
+    return (SequenceMatcher(None, a, b).ratio() * 100)
 
-    # Sort the items based on the calculated distance
+
+def get_closest_lagenes(items: List[Individual], reference: Individual, n: int, include_reference: bool = False) -> \
+List[Individual]:
+    distances = [(item, abs(item.item.positional_rank - reference.item.positional_rank))
+                 for item in items if item.fitness > 0.0 or item.item.name == reference.item.name]
     sorted_items = sorted(distances, key=lambda x: x[1])
+    filtered_items = [item for item, _ in sorted_items if item.item.name != reference.item.name]
 
-    # Filter out the reference item from the sorted list
-    sorted_items = [item for item in sorted_items if item[0].item.name != reference_item.item.name]
-
-    # Determine how many items to select
     num_to_select = n - 1 if include_reference else n
-
-    # Select the top num_to_select closest items
-    closest_items = [item[0] for item in sorted_items[:num_to_select]]
-
-    # Sort the closest items based on the length of item.item.source, longest first
+    closest_items = filtered_items[:num_to_select]
     closest_items.sort(key=lambda item: len(item.item.source), reverse=True)
 
-    # If include_reference is True, add the reference_item at the end
     if include_reference:
-        closest_items = [reference_item] + closest_items
+        closest_items =  closest_items + [reference]
 
     return closest_items
+
+
 class CommunalFitness:
     def __init__(self, environment: Environment, gene_pool: LaGenePool, n_texts: int, n_lagenes: int,
-                 afterlife: AfterLife):
+                 afterlife: AfterLife, query_text: str = None):
         self.environment = environment
         self.gene_pool = gene_pool
+        self.afterlife = afterlife
         self.fitness_history = []
-        self.reset = 0
         self.useful_lagenes = {}
         self.fitness_memory = {}
         self.n_texts = n_texts
         self.n_lagenes = n_lagenes
-        self.afterlife = afterlife
+        self.reset_count = 0
+        self.updates = 0
+        self.query_text = query_text.split() if query_text else None
 
     def fitness(self, individual: Individual) -> float:
-        global global_history, fitness_history
+        fitness_key = f"{individual.item.source} - {individual.item.target}"
 
-        fitness_rep = f"{individual.item.source} - {individual.item.target}"
-        memory = self.fitness_memory.get(fitness_rep, None)
+        # if fitness_key in self.fitness_memory:
+        #     stored_fitness, stored_name = self.fitness_memory[fitness_key]
+        #     if stored_name != individual.item.name:
+        #         return individual.fitness * 0.8
 
-        # if memory:
-        #     fitness, name = memory
-        #     if name != individual.item.name:
-        #         return individual.fitness * .8
         query = ' '.join(individual.item.source)
-        #div = min(len(individual.item.source), len(individual.item.target))
-
         source_sample, target_sample = self.gene_pool.find_samples(query, n=self.n_texts)
         source_sample, target_sample = source_sample.split(), target_sample.split()
-        other_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=self.n_lagenes)
-        # Translation without the current LaGene
-        translation_without = self.apply_lagenes(other_lagenes, source_sample)
-        similarity_without = sim(translation_without, target_sample) #* div
-        # Translation with the current LaGene
-        all_lagenes = close_lagenes(items=self.environment.individuals, reference_item=individual, n=self.n_lagenes,
-                                    include_reference=True)
 
+        other_lagenes = get_closest_lagenes(self.environment.individuals, individual, self.n_lagenes)
+        all_lagenes = get_closest_lagenes(self.environment.individuals, individual, self.n_lagenes,
+                                          include_reference=True)
+
+        translation_without = self.apply_lagenes(other_lagenes, source_sample)
         translation_with = self.apply_lagenes(all_lagenes, source_sample)
 
-        similarity_with = sim(translation_with, target_sample) #* div
-        length = len(self.environment.history['population'])
+        similarity_without = similarity(translation_without, target_sample, source_sample)
+        similarity_with = similarity(translation_with, target_sample, source_sample)
 
-        if length != self.reset:
-            all_lagenes += self.afterlife.individuals
-            translation_with = self.apply_lagenes(all_lagenes, self.gene_pool.source_text)
-
-            total = sim(translation_with, self.gene_pool.target_text)
-            self.fitness_history.append(total)
-            self.reset = length
-
+        self.update_fitness_history()
 
         improvement = similarity_with - similarity_without
-        if not self.fitness_memory.get(fitness_rep, None):
-            self.fitness_memory[fitness_rep] = (improvement, individual.item.name)
+        # self.fitness_memory[fitness_key] = (improvement, individual.item.name)
 
         if improvement < 0:
             self.environment.individuals = [ind for ind in self.environment.individuals if ind != individual]
+        elif improvement > 1:
+            self.update_useful_lagenes(individual, improvement)
 
-        if improvement > 1:
-            key = ' '.join(individual.item.source)
-            value = ' '.join(individual.item.target)
-            previous_useful = self.useful_lagenes.get(key, None)
-
-            if previous_useful is None:
-                self.useful_lagenes.update({key: (value, improvement)})
+        if self.query_text:
+            before = self.query_text.copy()
+            after = self.apply_lagenes([individual], before.copy())
+            if before != after:
+                return improvement * 2
+            else:
                 return improvement
-            if previous_useful[0] == value:
-                return improvement
-            if previous_useful[1] < improvement:
-                print("replaceing")
-                print(key + ' -> ' + self.useful_lagenes[key][0])
-                print(key + ' -> ' +value)
-                self.useful_lagenes[key] = (value, improvement)
-        return improvement
+        else:
+            return improvement
 
-    def final(self):
-        other_lagenes = [ind for ind in self.environment.individuals + self.afterlife.individuals]
-        translation_without = self.apply_lagenes(other_lagenes, self.gene_pool.source_text)
-        return " ".join(translation_without)
+    def update_fitness_history(self):
+        current_length = len(self.environment.history['population'])
+        if current_length != self.reset_count:
+            all_lagenes = self.environment.individuals + self.afterlife.individuals
+            translation = self.apply_lagenes(all_lagenes, self.gene_pool.source_text)
+            total_similarity = similarity(translation, self.gene_pool.target_text, self.gene_pool.source_text)
+            self.fitness_history.append(total_similarity)
+            self.reset_count = current_length
 
-    def apply_lagenes(self, lagenes: List[LaGene], text: np.ndarray) -> str:
-        for individual in sorted(lagenes, key=lambda x: len(x.item.source) + x.item.order_boost):
-            text = individual.item.apply(text)
+    def update_useful_lagenes(self, individual: Individual, improvement: float):
+        key = ' '.join(individual.item.source)
+
+        if key not in self.useful_lagenes or self.useful_lagenes[key][1] < improvement:
+            self.useful_lagenes[key] = (individual.item.dict(), improvement)
+            self.updates += 1
+
+
+    def apply_lagenes(self, lagenes: List[LaGene], text: List[str]) -> List[str]:
+        sorted_lagenes = sorted(lagenes, key=lambda x: len(x.item.source) + x.item.order_boost)
+        for lagene in sorted_lagenes:
+            text = lagene.item.apply(text)
         return text
 
+    def final(self) -> str:
+        all_lagenes = self.afterlife.individuals
+        if self.query_text:
+            translation = self.apply_lagenes(all_lagenes, self.query_text)
+        else:
+            translation = self.apply_lagenes(all_lagenes, self.gene_pool.source_text)
+
+
+        return " ".join(translation)
+
     def plot(self):
+        import matplotlib.pyplot as plt
         plt.plot(self.fitness_history)
         plt.ylabel('Communal Fitness')
         plt.xlabel("Generation")

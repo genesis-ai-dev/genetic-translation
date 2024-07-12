@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import uuid
 
+
 class LaGene:
     def __init__(self, source: np.ndarray, target: np.ndarray, shift: int, positional_rank: float):
         self.source = source
@@ -24,6 +25,13 @@ class LaGene:
         #     new_sequence = l_shift(new_sequence, self.target, self.shift)
 
         return new_sequence
+
+    def __str__(self):
+        return f"{self.name}: ({self.positional_rank}) + {self.order_boost}  | {' '.join(self.source)} <fromto> {' '.join(self.target)}"
+
+    def dict(self):
+        return {'name': self.name, 'positional_rank': self.positional_rank, 'order_boost': self.order_boost,
+                'source': self.source, 'target': self.target}
 
 
 class LaGenePool(GenePool):

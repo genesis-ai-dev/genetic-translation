@@ -53,7 +53,7 @@ class LexiconMutation(Layer):
     """
 
     def __init__(self, selection: Union[Callable, int], gene_pool: LaGenePool, overpowered: bool = False):
-        super().__init__(application_function=self.mutate_all, selection_function=selection, refit=False)
+        super().__init__(application_function=self.mutate_all, selection_function=selection, refit=not overpowered)
         self.gene_pool = gene_pool
         self.overpowered = overpowered
 
@@ -136,7 +136,7 @@ class MarkovMutation(Layer):
 
     def __init__(self, selection: Union[Callable, int], gene_pool: LaGenePool, overpowered: bool = False,
                  mutation_obedience: float = .96):
-        super().__init__(application_function=self.mutate_all, selection_function=selection, refit=False)
+        super().__init__(application_function=self.mutate_all, selection_function=selection, refit=not overpowered)
         self.gene_pool = gene_pool
         self.overpowered = overpowered
         self.mutation_obedience = mutation_obedience

@@ -77,6 +77,33 @@ class BiMarkovChain:
             return ''
         return self.idx_to_item[prev_idx]
 
+    def generate_sequences(self, words):
+        return list(permutations(words))
+
+    def sequence_probability(self, sequence):
+        if not hasattr(self, 'fwd_matrix'):
+            self._build_matrices()
+
+        probability = 1.0
+        for i in range(len(sequence) - 1):
+            current_word = sequence[i]
+            next_word = sequence[i + 1]
+            try:
+                curr_idx = self.item_to_idx[current_word]
+                next_idx = self.item_to_idx[next_word]
+                probability *= self.fwd_matrix[curr_idx, next_idx]
+            except KeyError:
+                probability *= 0.0001  # Small probability for unseen transitions
+        return probability
+
+    def rank_sequences(self, sequences):
+        ranked = [(seq, self.sequence_probability(seq)) for seq in sequences]
+        return sorted(ranked, key=lambda x: x[1], reverse=True)
+
+    def order_words(self, words, top_n=5):
+        sequences = self.generate_sequences(words)
+        ranked_sequences = self.rank_sequences(sequences)
+        return ranked_sequences[:top_n]
 
 
 class AutoLexicon:
