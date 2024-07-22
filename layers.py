@@ -193,7 +193,7 @@ class MassExtinction(Layer):
     """
 
     def __init__(self, period: int):
-        super().__init__(application_function=self.mass_extinction, selection_function=lambda x: x)
+        super().__init__(application_function=self.mass_extinction, selection_function=lambda x: x, refit=False)
         self.n = 0
         self.period = period
 
@@ -214,7 +214,7 @@ class MigrationLayer(Layer):
 
     def __init__(self, selection: Union[Callable, int], gene_pool: LaGenePool, hard_reset: bool = False,
                  scope_size: int = 4):
-        super().__init__(application_function=self.migrate, selection_function=selection)
+        super().__init__(application_function=self.migrate, selection_function=selection, refit=False)
         self.hard_reset = hard_reset
         self.gene_pool = gene_pool
         self.scope_size = scope_size
@@ -256,7 +256,7 @@ class MigrationLayer(Layer):
 class AfterLife(Layer):
     def __init__(self, start_at: int, n_best: int, period: int, threshold: float = 12):
         """A positive way to die"""
-        super().__init__(application_function=self.save, selection_function=lambda x: x)
+        super().__init__(application_function=self.save, selection_function=lambda x: x, refit=False)
         self.n_best = n_best
         self.start_at = start_at
         self.individuals = []

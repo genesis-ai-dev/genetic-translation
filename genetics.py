@@ -8,6 +8,7 @@ import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import uuid
+from typing import List
 
 
 class LaGene:
@@ -25,6 +26,10 @@ class LaGene:
         #     new_sequence = l_shift(new_sequence, self.target, self.shift)
 
         return new_sequence
+
+    def check_and_add(self, input_text: List[str], output_text: List[str]):
+        if all(req in input_text for req in self.source):
+            output_text.extend(self.target)
 
     def __str__(self):
         return f"{self.name}: ({self.positional_rank}) + {self.order_boost}  | {' '.join(self.source)} <fromto> {' '.join(self.target)}"
