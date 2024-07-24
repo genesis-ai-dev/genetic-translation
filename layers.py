@@ -47,6 +47,95 @@ class SimpleLaGeneCrossover(Layer):
         return child_lagene
 
 
+import random
+from typing import List, Union, Callable
+from Finch.generic import Layer, Individual
+from genetics import LaGene, LaGenePool
+
+
+class NPointLaGeneCrossover(Layer):
+    """
+    Performs flexible N-point crossover operation on LaGene individuals.
+    """
+
+    def __init__(self, parent_selection: Union[Callable, int], families: int, children_per_family: int,
+                 gene_pool: LaGenePool, n_points: int = 2):
+        super().__init__(application_function=self.crossover_family, selection_function=parent_selection,
+                         repeat=families, refit=False)
+        self.gene_pool = gene_pool
+        self.children_per_family = children_per_family
+        self.n_points = n_points
+
+    def crossover_family(self, parents: List[Individual]) -> List[Individual]:
+        """
+        Performs crossover between two parent individuals to create multiple children.
+        """
+        parent1, parent2 = parents
+        assert parent1.item.__class__ == LaGene and parent2.item.__class__ == LaGene, \
+            "Individual Items must be LaGenes"
+
+        children = []
+        for _ in range(self.children_per_family):
+            child = self.flexible_n_point_crossover(parent1, parent2)
+            if child is not None:
+                children.append(child)
+
+        self.environment.add_individuals(children)
+        return children
+
+    def flexible_n_point_crossover(self, parent1: Individual, parent2: Individual) -> Union[Individual, None]:
+        """
+        Performs flexible N-point crossover between two parents.
+        """
+        source1, source2 = parent1.item.source, parent2.item.source
+        target1, target2 = parent1.item.target, parent2.item.target
+
+        # Determine the number of crossover points based on sequence lengths
+        min_length = min(len(source1), len(source2), len(target1), len(target2))
+        max_points = min(min_length - 1, self.n_points)
+
+        if max_points <= 0:
+            # If sequences are too short for crossover, randomly choose one parent
+            chosen_parent = random.choice([parent1, parent2])
+            child_source = chosen_parent.item.source.copy()
+            child_target = chosen_parent.item.target.copy()
+        else:
+            # Perform crossover
+            num_points = random.randint(1, max_points)
+            crossover_points = sorted(random.sample(range(1, min_length), num_points))
+
+            child_source = []
+            child_target = []
+            start = 0
+            parent_switch = False
+
+            for point in crossover_points + [None]:  # Add None to process the last segment
+                if parent_switch:
+                    child_source.extend(source2[start:point])
+                    child_target.extend(target2[start:point])
+                else:
+                    child_source.extend(source1[start:point])
+                    child_target.extend(target1[start:point])
+                start = point
+                parent_switch = not parent_switch
+
+        # Calculate new positional rank
+        rank1, rank2 = parent1.item.positional_rank, parent2.item.positional_rank
+        new_rank = (rank1 + rank2) / 2 + random.uniform(-0.05, 0.05)
+
+        child_lagene = LaGene(source=child_source, target=child_target, shift=0, positional_rank=new_rank)
+        child_individual = Individual(child_lagene, parent1.fitness_function)
+        child_individual.fit()
+
+        if child_individual.fitness <= max(parent1.fitness, parent2.fitness) or child_individual.fitness <= 0:
+            return None
+
+        child_individual.item.name = f"{parent1.item.name}_{parent2.item.name}_child"
+        return child_individual
+
+    def __str__(self):
+        return f"FlexibleNPointLaGeneCrossover(families={self.repeat}, children_per_family={self.children_per_family}, n_points={self.n_points})"
+
 class LexiconMutation(Layer):
     """
     Performs mutation operations on individuals using a lexicon.

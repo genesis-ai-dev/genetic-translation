@@ -4,9 +4,12 @@ from difflib import SequenceMatcher
 from Finch.generic import Environment, Individual
 from genetics import LaGenePool, LaGene
 from layers import AfterLife
+import math
 
+def length_penalty(source, target):
+    diff = abs(len(source) - len(target))
+    return diff / 3.14
 def similarity(a: List[str], b: List[str]) -> float:
-
     return SequenceMatcher(None, a, b).ratio() * 100
 
 def raw_similarity(a: List[str], b: List[str]) -> float:
@@ -30,10 +33,9 @@ def get_closest_lagenes(items: List[Individual], reference: Individual, n: int, 
     return closest_items
 
 def translate(input_text: List[str], lagenes: List[LaGene]) -> List[str]:
-    output_words = []
     for lagene in sorted(lagenes, key=lambda x: x.positional_rank):
-        lagene.check_and_add(input_text, output_words)
-    return output_words
+        input_text = lagene.apply(input_text)
+    return input_text
 
 class CommunalFitness:
     def __init__(self, environment: Environment, gene_pool: LaGenePool, n_texts: int, n_lagenes: int,
@@ -56,7 +58,7 @@ class CommunalFitness:
         if fitness_key in self.fitness_memory:
             stored_fitness, stored_name = self.fitness_memory[fitness_key]
             if stored_name != individual.item.name:
-                return individual.fitness * 0.8
+                return individual.fitness * 0.4
 
         query = ' '.join(individual.item.source)
         source_sample, target_sample = self.gene_pool.find_samples(query, n=self.n_texts)
@@ -74,6 +76,8 @@ class CommunalFitness:
         self.update_fitness_history()
 
         improvement = similarity_with - similarity_without
+        improvement -= length_penalty(individual.item.source, individual.item.target)
+
         self.fitness_memory[fitness_key] = (improvement, individual.item.name)
 
         if improvement < 0:
@@ -82,21 +86,16 @@ class CommunalFitness:
             self.update_useful_lagenes(individual, improvement)
 
         if self.query_text:
-            before = self.query_text.copy()
-            after = translate(before, [individual.item])
-            if before != after:
-                return improvement * 2
-            else:
-                return improvement
-        else:
-            return improvement
+            relevance = len(individual.item.source) if ' '.join(individual.item.source) in ' '.join(self.query_text) else 0
+            improvement += relevance
+        return improvement
 
     def update_fitness_history(self):
         current_length = len(self.environment.history['population'])
         if current_length != self.reset_count:
             all_lagenes = self.environment.individuals + self.afterlife.individuals
             translation = translate(self.gene_pool.source_text, [ind.item for ind in all_lagenes])
-            total_similarity = raw_similarity(translation, self.gene_pool.target_text)
+            total_similarity = similarity(translation, self.gene_pool.target_text)
             self.fitness_history.append(total_similarity)
             self.reset_count = current_length
 
