@@ -362,7 +362,7 @@ class AfterLife(Layer):
             if len(self.environment.individuals) > self.n_best:
                 for i in range(self.n_best):
                     if self.environment.individuals[0].fitness > self.threshold:
-                        self.individuals.append(self.environment.individuals.pop(0))
+                        self.individuals.append(self.environment.individuals[0].copy())
 
     def bring_back(self):
         self.environment.add_individuals(self.individuals)
