@@ -127,10 +127,10 @@ class NPointLaGeneCrossover(Layer):
         child_individual = Individual(child_lagene, parent1.fitness_function)
         child_individual.fit()
 
-        if child_individual.fitness <= max(parent1.fitness, parent2.fitness) or child_individual.fitness <= 0:
-            return None
+        # if child_individual.fitness <= min(parent1.fitness, parent2.fitness) or child_individual.fitness <= 0:
+        #     return None
 
-        child_individual.item.name = f"{parent1.item.name}_{parent2.item.name}_child"
+        # child_individual.item.name = parent1.item.name
         return child_individual
 
     def __str__(self):
@@ -266,11 +266,13 @@ class MarkovMutation(Layer):
             if random.random() < .5:
                 last_item = sequence[-1]
                 new_item = self.gene_pool.markov.rand_next(last_item)
-                sequence.append(new_item)
+                if new_item:
+                    sequence.append(new_item)
             else:
                 first_item = sequence[0]
                 new_item = self.gene_pool.markov.rand_prev(first_item)
-                sequence.insert(0, new_item)
+                if new_item:
+                    sequence.insert(0, new_item)
         elif mutation_type == 'delete' and random.random() > .5:
             index = random.randint(0, len(sequence) - 1)
             sequence.pop(index)

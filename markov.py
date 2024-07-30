@@ -61,9 +61,9 @@ class BiMarkovChain:
         try:
             idx = self.item_to_idx[item]
         except KeyError:
-            return ''
+            return None
         if sum(self.fwd_matrix[idx]) < 1:
-            return ''
+            return None
         next_idx = random.choices(range(len(self.items)), weights=self.fwd_matrix[idx])[0]
         return self.idx_to_item[next_idx]
 
@@ -74,7 +74,7 @@ class BiMarkovChain:
             idx = self.item_to_idx[item]
             prev_idx = np.random.choice(len(self.items), p=self.bwd_matrix[idx])
         except:
-            return ''
+            return None
         return self.idx_to_item[prev_idx]
 
     def generate_sequences(self, words):

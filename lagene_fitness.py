@@ -8,7 +8,7 @@ import math
 
 def length_penalty(source, target):
     diff = abs(len(source) - len(target))
-    return diff / 3.14
+    return diff * 2
 def similarity(a: List[str], b: List[str]) -> float:
     return SequenceMatcher(None, a, b).ratio() * 100
 
@@ -56,9 +56,11 @@ class CommunalFitness:
         fitness_key = f"{individual.item.source} - {individual.item.target}"
 
         if fitness_key in self.fitness_memory:
-            stored_fitness, stored_name = self.fitness_memory[fitness_key]
-            if stored_name != individual.item.name:
-                return individual.fitness * 0.4
+            stored_fitness, stored_name, count = self.fitness_memory[fitness_key]
+            if stored_name != individual.item.name or count > 3:
+                return 0
+            self.fitness_memory[fitness_key] = (stored_fitness, stored_name, count +1)
+
 
         query = ' '.join(individual.item.source)
         source_sample, target_sample = self.gene_pool.find_samples(query, n=self.n_texts)
@@ -78,7 +80,7 @@ class CommunalFitness:
         improvement = similarity_with - similarity_without
         improvement -= length_penalty(individual.item.source, individual.item.target)
 
-        self.fitness_memory[fitness_key] = (improvement, individual.item.name)
+        self.fitness_memory[fitness_key] = (improvement, individual.item.name, 1)
 
         if improvement < 0:
             self.environment.individuals = [ind for ind in self.environment.individuals if ind != individual]
